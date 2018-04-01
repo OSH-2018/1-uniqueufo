@@ -73,7 +73,7 @@ c                                  #运行系统以测试
 
 
 ----------
-![source](https://github.com/uniqueufo/OSH_test/blob/master/1.png)
+![source](https://github.com/OSH-2018/1-uniqueufo/blob/master/picture/1.png)
 ----------
 ### 内核启动流程
 
@@ -136,6 +136,7 @@ c                                  #运行系统以测试
 - 在pmjump.S中一系列汇编码的操作后,内核跳转到 start_kernel.
 >jmp i386_start_kernel
 
+
 其中 i386_start_kernel 定义在 arch/x86/kernel/head32.c :
 ```cpp
 asmlinkage __visible void __init i386_start_kernel(void)
@@ -146,6 +147,11 @@ asmlinkage __visible void __init i386_start_kernel(void)
 }
 
 ```
+
+**此时系统状态**
+![source](https://github.com/OSH-2018/1-uniqueufo/blob/master/picture/3.png)
+
+
 ##### 在/linux-4.15.14/init/main.c 中 
 
 start_kernel()中调用了一系列初始化函数，以完成kernel本身的设置。
@@ -168,28 +174,38 @@ start_kernel()中调用了一系列初始化函数，以完成kernel本身的设
 - 创建内存文件描述符表
 
 **在start_kernel函数执行的最后一个函数调用rest_init（）时，Linux系统开始有了一个进程，此进程pid为0**
-
+![source](https://github.com/OSH-2018/1-uniqueufo/blob/master/picture/2.png)
 
 
 ##### 启动init过程
 
 - 总线初始化
 - 网络初始化
--    创建bdflush核心线程
--    创建kupdate核心线程
--    设置并启动核心调页线程kswapd
--    创建事件管理核心线程
--    设备初始化
--    执行文件格式设置
--    启动任何使用__initcall标识的函数
--    文件系统初始化
--   安装root文件系统
+- 创建bdflush核心线程
+- 创建kupdate核心线程
+- 设置并启动核心调页线程kswapd
+- 创建事件管理核心线程
+- 设备初始化
+- 执行文件格式设置
+- 启动任何使用__initcall标识的函数
+- 文件系统初始化
+- 安装root文件系统
 
-
---------------------------------------
-#####在调试时发现了
+##### 在调试时发现了
 >kernel_thread(kernel_init, NULL, CLONE_FS | CLONE_SIGHAND);
 
 　　这个pid为1的init进程，它继续完成剩下的初始化工作，然后execve(/sbin/init), 成为系统中的其他所有进程的祖先。总而言之，系统启动后首先执行一系列的初始化工作，直到start_kernel处，它是代码的入口点，相当于main.c函数。然后启动系统的第一个进程init，init是所有进程的父进程，由init再启动子进程，从而使得系统成功运行起来。
+
+--------------------------------------
+## 总结
+**x86架构的Linux内核启动过程可以分为一下几步**
+-（1）实模式的入口函数_start()：在header.S中，这里会进入main函数，它拷贝bootloader的各个参数，执行基本硬件设置，解析命令行参数。
+-    （2）保护模式的入口函数startup_32()：在compressed/header_32.S中，这里会解压bzImage内核映像，加载vmlinux内核文件。
+-    （3）内核入口函数startup_32()：在kernel/header_32.S中，这就是所谓的进程0，它会进入start_kernel()函数，即Linux内核启动函数。start_kernel()会做大量的内核初始化操作，解析内核启动的命令行参数，并启动一个内核线程来完成内核模块初始化的过程，然后进入空闲循环。
+-    （4）内核模块初始化的入口函数kernel_init()：在init/main.c中，这里会启动内核模块、创建基于内存的rootfs、加载initramfs文件或cpio-initrd，并启动一个内核线程来运行其中的/init脚本，完成真正根文件系统的挂载。
+-   （5）根文件系统挂载脚本/init：这里会挂载根文件系统、运行/sbin/init，从而启动众所周知的进程1。本次实验使用busybox制作根文件系统供init挂载
+-    （6）init进程的系统初始化过程：执行相关脚本，以完成系统初始化，如设置键盘、字体，装载模块，设置网络等，最后运行登录程序，出现登录界面。
+
+   
 
 
