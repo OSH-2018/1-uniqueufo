@@ -74,23 +74,54 @@ c                                  #运行系统以测试
 
 ----------
 ![source](https://github.com/OSH-2018/1-uniqueufo/blob/master/picture/1.png)
-----------
-### 内核启动流程
 
+
+
+
+**观察到系统已经正常启动，可以进行后续调试分析工作**
+----------
+## 内核启动流程
 
 >&emsp;&emsp;系统是从BIOS加电自检，载入MBR中的引导程序(LILO/GRUB),再加载linux内核开始运行的，一直到指定shell开始运行告一段落，这时用户开始操作Linux。而大致是在vmlinux的入口startup_32(head.S)中为pid号为0的原始进程设置了执行环境，然后原始进程开始执行start_kernel()完成Linux内核的初始化工作。
 
+**阅读[linux启动协议](https://www.kernel.org/doc/Documentation/x86/boot.txt)可知x86 体系结构大内核内存使用如下:**
+
+
+```bash
+       ~                        ~   
+        |  Protected-mode kernel |
+100000  +------------------------+
+        |  I/O memory hole       |   
+0A0000  +------------------------+
+        |  Reserved for BIOS     |      Leave as much as possible unused
+        ~                        ~   
+        |  Command line          |      (Can also be below the X+10000 mark)
+X+10000 +------------------------+
+        |  Stack/heap            |      For use by the kernel real-mode code.
+X+08000 +------------------------+    
+        |  Kernel setup          |      The kernel real-mode code.
+        |  Kernel boot sector    |      The kernel legacy boot sector.
+X       +------------------------+
+        |  Boot loader           |      <- Boot sector entry point 0000:7C00
+001000  +------------------------+
+        |  Reserved for MBR/BIOS |
+000800  +------------------------+
+        |  Typically used by MBR |
+000600  +------------------------+ 
+        |  BIOS use only         |   
+000000  +------------------------+
+```
 
 ##### 在/arch/x86/boot/header.S汇编文件中(start_of_kernel)：
-
-
+- 在对一段汇编代码（QWQ）进行一段编译链接后，会生成 512 字节的 bootsector
+- GRUB 等 boot loader 将 setup.elf 读到 0x90000 处，将 vmlinux 读到 0x100000 处，然后跳转到 0x90200 开始执行x90200（_start）了，目的就是跳到 start_of_setup
 - 复位硬盘控制器
 - 如果 %ss 无效，重新计算栈指针
--    初始化栈，开中断
+-    初始化栈，可使用中断
 -    将 cs 设置为 ds，与 setup.elf 的入口地址一致
 -    检查主引导扇区末尾标志，如果不正确则跳到 setup_bad
 -   清空 bss 段
--  跳到 main（定义在 boot/main.c）
+-   跳转到 main函数（定义在 boot/main.c）
 
 
 >calll   main
@@ -147,9 +178,16 @@ asmlinkage __visible void __init i386_start_kernel(void)
 }
 
 ```
+![source](https://github.com/OSH-2018/1-uniqueufo/blob/master/picture/3.png)
+
+
+
+
+
+
 
 **此时系统状态**
-![source](https://github.com/OSH-2018/1-uniqueufo/blob/master/picture/3.png)
+
 
 
 ##### 在/linux-4.15.14/init/main.c 中 
@@ -198,6 +236,7 @@ start_kernel()中调用了一系列初始化函数，以完成kernel本身的设
 
 --------------------------------------
 ## 总结
+
 **x86架构的Linux内核启动过程可以分为一下几步**
 -（1）实模式的入口函数_start()：在header.S中，这里会进入main函数，它拷贝bootloader的各个参数，执行基本硬件设置，解析命令行参数。
 -    （2）保护模式的入口函数startup_32()：在compressed/header_32.S中，这里会解压bzImage内核映像，加载vmlinux内核文件。
