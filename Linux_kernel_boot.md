@@ -204,14 +204,22 @@ start_kernel()中调用了一系列初始化函数，以完成kernel本身的设
 - 延迟校准
 - 内存初始化
 - 创建和设置内部及通用cache
+- 创建uid taskcount SLAB cache
+- 创建与虚存相关的cache
+- 块设备读写缓冲区初始化
 - 创建文件cache
 - 创建目录cache
 - 创建页cache
 - 创建信号队列cache
 - 初始化内存inode表
 - 创建内存文件描述符表
+- 检查体系结构漏洞
+- SMP机器其余CPU（除当前引导CPU）初始化
+- 启动init过程
 
 **在start_kernel函数执行的最后一个函数调用rest_init（）时，Linux系统开始有了一个进程，此进程pid为0**
+
+
 ![source](https://github.com/OSH-2018/1-uniqueufo/blob/master/picture/2.png)
 
 
@@ -238,7 +246,8 @@ start_kernel()中调用了一系列初始化函数，以完成kernel本身的设
 ## 总结
 
 **x86架构的Linux内核启动过程可以分为一下几步**
--（1）实模式的入口函数_start()：在header.S中，这里会进入main函数，它拷贝bootloader的各个参数，执行基本硬件设置，解析命令行参数。
+
+-    （1）实模式的入口函数_start()：在header.S中，这里会进入main函数，它拷贝bootloader的各个参数，执行基本硬件设置，解析命令行参数。
 -    （2）保护模式的入口函数startup_32()：在compressed/header_32.S中，这里会解压bzImage内核映像，加载vmlinux内核文件。
 -    （3）内核入口函数startup_32()：在kernel/header_32.S中，这就是所谓的进程0，它会进入start_kernel()函数，即Linux内核启动函数。start_kernel()会做大量的内核初始化操作，解析内核启动的命令行参数，并启动一个内核线程来完成内核模块初始化的过程，然后进入空闲循环。
 -    （4）内核模块初始化的入口函数kernel_init()：在init/main.c中，这里会启动内核模块、创建基于内存的rootfs、加载initramfs文件或cpio-initrd，并启动一个内核线程来运行其中的/init脚本，完成真正根文件系统的挂载。
